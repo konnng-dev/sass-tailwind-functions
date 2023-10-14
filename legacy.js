@@ -7,6 +7,17 @@ const escapeClassName =
   require('tailwindcss/lib/util/escapeClassName').default;
 const resolveConfig = require('tailwindcss/resolveConfig');
 
+let normalizeScreens = (screens) => screens;
+
+try {
+  if (require.resolve('tailwindcss/lib/util/normalizeScreens')) {
+    const {
+      normalizeScreens: _normalizeScreens,
+    } = require('tailwindcss/lib/util/normalizeScreens'); // eslint-disable-line import/no-unresolved
+    normalizeScreens = _normalizeScreens;
+  }
+} catch {} // eslint-disable-line no-empty
+
 const EMPTY = '@@EMPTY@@';
 
 const forceToString = (sassValue) => {
@@ -109,10 +120,15 @@ module.exports = (sass, tailwindConfig) => {
 
   function screenFn($screen) {
     const screen = assertString($screen, '$screen').getValue();
-    if (theme.screens[screen] === undefined) {
+    const screens = normalizeScreens(theme.screens);
+    const screenDefinition = Array.isArray(screens)
+      ? screens.find(({ name }) => name === screen)
+      : screens[screen];
+    if (screenDefinition === undefined) {
       throw new Error(`The '${screen}' screen does not exist in your theme.`);
     }
-    return new sass.types.String(buildMediaQuery(theme.screens[screen]));
+
+    return new sass.types.String(buildMediaQuery(screenDefinition));
   }
 
   return {
